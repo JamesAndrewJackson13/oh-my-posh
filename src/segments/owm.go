@@ -109,7 +109,7 @@ func (d *Owm) getResult() (*owmDataResponse, error) {
 	units := d.props.GetString(Units, "standard")
 	httpTimeout := d.props.GetInt(properties.HTTPTimeout, properties.DefaultHTTPTimeout)
 
-	location := d.getPropOrEnvVar(PoshOWMAPIKey, "De Bilt,NL", Location)
+	location := d.getPropOrEnvVar(PoshOWMLocationKey, "De Bilt,NL", Location)
 	// location = url.QueryEscape(location)
 
 	// Use different URLs depending on if a location or lat/lon were passed
