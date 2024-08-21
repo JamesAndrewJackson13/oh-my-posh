@@ -27,6 +27,10 @@ const (
 	APIKey properties.Property = "api_key"
 	// Location openweathermap location
 	Location properties.Property = "location"
+	// Location openweathermap location
+	Latitude properties.Property = "lat"
+	// Location openweathermap location
+	Longitude properties.Property = "lon"
 	// Units openweathermap units
 	Units properties.Property = "units"
 	// CacheKeyResponse key used when caching the response
@@ -37,6 +41,10 @@ const (
 	PoshOWMAPIKey string = "POSH_OWM_API_KEY"
 	// Environmental variable to dynamically set the location string
 	PoshOWMLocationKey string = "POSH_OWM_LOCATION"
+	// Environmental variable to dynamically set the latitude
+	PoshOWMLatKey string = "POSH_OWM_LAT"
+	// Environmental variable to dynamically set the longitude
+	PoshOWMLonKey string = "POSH_OWM_LON"
 )
 
 type weather struct {
@@ -68,6 +76,14 @@ func (d *Owm) Template() string {
 	return " {{ .Weather }} ({{ .Temperature }}{{ .UnitIcon }}) "
 }
 
+func (d *Owm) getPropOrEnvVar(envKey, defaultValue string, propKeyOptions ...properties.Property) string {
+	v := properties.OneOf(d.props, defaultValue, propKeyOptions...)
+	if len(v) == 0 {
+		v = d.env.Getenv(envKey)
+	}
+	return v
+}
+
 func (d *Owm) getResult() (*owmDataResponse, error) {
 	cacheTimeout := d.props.GetInt(properties.CacheTimeout, properties.DefaultCacheTimeout)
 	response := new(owmDataResponse)
@@ -85,30 +101,25 @@ func (d *Owm) getResult() (*owmDataResponse, error) {
 		}
 	}
 
-	apikey := properties.OneOf(d.props, ".", APIKey, "apiKey")
-	if len(apikey) == 0 {
-		apikey = d.env.Getenv(PoshOWMAPIKey)
-	}
-
+	apikey := d.getPropOrEnvVar(PoshOWMAPIKey, ".", APIKey, "apiKey")
 	if len(apikey) == 0 {
 		return nil, errors.New("no api key found")
 	}
 
-	location := d.props.GetString(Location, "De Bilt,NL")
-	if len(location) == 0 {
-		location = d.env.Getenv(PoshOWMLocationKey)
-	}
-
-	if len(location) == 0 {
-		return nil, errors.New("no location found")
-	}
-
-	location = url.QueryEscape(location)
-
 	units := d.props.GetString(Units, "standard")
 	httpTimeout := d.props.GetInt(properties.HTTPTimeout, properties.DefaultHTTPTimeout)
 
-	d.URL = fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?q=%s&units=%s&appid=%s", location, units, apikey)
+	location := d.getPropOrEnvVar(PoshOWMAPIKey, "De Bilt,NL", Location)
+	// location = url.QueryEscape(location)
+
+	// Use different URLs depending on if a location or lat/lon were passed
+	if len(location) > 0 {
+		d.URL = fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?q=%s&units=%s&appid=%s", location, units, apikey)
+	} else {
+		lat := d.getPropOrEnvVar(PoshOWMLatKey, "0", Latitude)
+		lon := d.getPropOrEnvVar(PoshOWMLonKey, "0", Longitude)
+		d.URL = fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?lat=%s&lon=%s&units=%s&appid=%s", lat, lon, units, apikey)
+	}
 
 	body, err := d.env.HTTPRequest(d.URL, nil, httpTimeout)
 	if err != nil {
