@@ -114,10 +114,13 @@ func (d *Owm) getResult() (*owmDataResponse, error) {
 
 	// Use different URLs depending on if a location or lat/lon were passed
 	if len(location) > 0 {
+		location = url.QueryEscape(location)
 		d.URL = fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?q=%s&units=%s&appid=%s", location, units, apikey)
 	} else {
 		lat := d.getPropOrEnvVar(PoshOWMLatKey, "0", Latitude)
+		lat = url.QueryEscape(lat)
 		lon := d.getPropOrEnvVar(PoshOWMLonKey, "0", Longitude)
+		lon = url.QueryEscape(lon)
 		d.URL = fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?lat=%s&lon=%s&units=%s&appid=%s", lat, lon, units, apikey)
 	}
 
